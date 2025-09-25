@@ -11,6 +11,12 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private LayerMask groundLayers = -1;
     [SerializeField] private float groundSnapVelocity = -2f;
     [SerializeField] private float fallMultiplier = 1.5f;
+    [Header("Camera Controls")]
+    [SerializeField] private Vector3 cameraFocusOffset = new Vector3(0f, 1.6f, 0f);
+    [SerializeField] private float cameraRotationSpeed = 120f;
+    [SerializeField] private float cameraZoomSpeed = 5f;
+    [SerializeField] private float minCameraDistance = 2f;
+    [SerializeField] private float maxCameraDistance = 12f;
     [SerializeField] private bool showGroundCheckGizmo = true;
 
     private Vector3 groundCheckOrigin;
@@ -24,11 +30,19 @@ public class PlayerMovement : MonoBehaviour
     private InputAction moveAction;
     private InputAction jumpAction;
     private Vector3 velocity;
+    private Camera playerCamera;
+    private Vector3 cameraOffset;
 
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
         playerInput = GetComponent<PlayerInput>();
+        InitializeCameraReference();
+    }
+
+    private void Start()
+    {
+        InitializeCameraOffset();
     }
 
     private void OnEnable()
@@ -36,6 +50,7 @@ public class PlayerMovement : MonoBehaviour
         playerInput.actions.Enable();
         EnsureActionMap();
         CacheActions();
+        InitializeCameraOffset();
     }
 
     private void OnDisable()
@@ -113,6 +128,102 @@ public class PlayerMovement : MonoBehaviour
 
         velocity.y += gravity * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
+
+        HandleCameraControls();
+    }
+
+    private void HandleCameraControls()
+    {
+        if (playerCamera == null)
+        {
+            return;
+        }
+
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null)
+        {
+            return;
+        }
+
+        if (cameraOffset.sqrMagnitude < 0.0001f)
+        {
+            cameraOffset = new Vector3(0f, 0f, -Mathf.Max(minCameraDistance, 0.1f));
+        }
+
+        float rotationInput = 0f;
+        if (keyboard.jKey.isPressed)
+        {
+            rotationInput -= 1f;
+        }
+
+        if (keyboard.lKey.isPressed)
+        {
+            rotationInput += 1f;
+        }
+
+        if (!Mathf.Approximately(rotationInput, 0f))
+        {
+            Quaternion rotation = Quaternion.AngleAxis(rotationInput * cameraRotationSpeed * Time.deltaTime, Vector3.up);
+            cameraOffset = rotation * cameraOffset;
+        }
+
+        float zoomInput = 0f;
+        if (keyboard.iKey.isPressed)
+        {
+            zoomInput -= 1f;
+        }
+
+        if (keyboard.kKey.isPressed)
+        {
+            zoomInput += 1f;
+        }
+
+        if (!Mathf.Approximately(zoomInput, 0f))
+        {
+            float distance = Mathf.Clamp(cameraOffset.magnitude + zoomInput * cameraZoomSpeed * Time.deltaTime, minCameraDistance, maxCameraDistance);
+            if (distance > Mathf.Epsilon)
+            {
+                cameraOffset = cameraOffset.normalized * distance;
+            }
+        }
+
+        Vector3 focusPoint = transform.position + cameraFocusOffset;
+        playerCamera.transform.position = focusPoint + cameraOffset;
+        playerCamera.transform.LookAt(focusPoint);
+    }
+
+    private void InitializeCameraReference()
+    {
+        if (playerCamera != null)
+        {
+            return;
+        }
+
+        playerCamera = GetComponentInChildren<Camera>();
+    }
+
+    private void InitializeCameraOffset()
+    {
+        InitializeCameraReference();
+        if (playerCamera == null)
+        {
+            return;
+        }
+
+        minCameraDistance = Mathf.Max(0.1f, minCameraDistance);
+        maxCameraDistance = Mathf.Max(minCameraDistance, maxCameraDistance);
+
+        Vector3 focusPoint = transform.position + cameraFocusOffset;
+        cameraOffset = playerCamera.transform.position - focusPoint;
+        float distance = cameraOffset.magnitude;
+        if (distance < Mathf.Epsilon)
+        {
+            cameraOffset = new Vector3(0f, 0f, -minCameraDistance);
+        }
+        else
+        {
+            cameraOffset = cameraOffset.normalized * Mathf.Clamp(distance, minCameraDistance, maxCameraDistance);
+        }
     }
 
 #if UNITY_EDITOR
