@@ -192,6 +192,7 @@ public class PlayerMovement : MonoBehaviour
         playerCamera.transform.LookAt(focusPoint);
     }
 
+
     private void InitializeCameraReference()
     {
         if (playerCamera != null)
