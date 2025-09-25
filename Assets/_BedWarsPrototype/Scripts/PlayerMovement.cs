@@ -9,6 +9,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float gravity = -20f;
     [SerializeField] private float groundCheckDistance = 0.05f;
     [SerializeField] private LayerMask groundLayers = -1;
+    [SerializeField] private float groundSnapVelocity = -2f;
+    [SerializeField] private float fallMultiplier = 1.5f;
     [SerializeField] private bool showGroundCheckGizmo = true;
 
     private Vector3 groundCheckOrigin;
@@ -90,11 +92,16 @@ public class PlayerMovement : MonoBehaviour
             {
                 groundCheckHit = false;
             }
+
+            if (velocity.y < 0f && fallMultiplier > 1f)
+            {
+                velocity.y += gravity * (fallMultiplier - 1f) * Time.deltaTime;
+            }
         }
 
         if (grounded && velocity.y <= 0f)
         {
-            velocity.y = -2f;
+            velocity.y = Mathf.Min(velocity.y, groundSnapVelocity);
         }
 
         if (grounded && jumpAction.WasPressedThisFrame())
