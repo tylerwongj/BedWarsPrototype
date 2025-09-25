@@ -17,6 +17,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float cameraZoomSpeed = 5f;
     [SerializeField] private float minCameraDistance = 2f;
     [SerializeField] private float maxCameraDistance = 12f;
+    [SerializeField] private float turnSpeed = 15f;
     [SerializeField] private bool showGroundCheckGizmo = true;
 
     private Vector3 groundCheckOrigin;
@@ -84,8 +85,9 @@ public class PlayerMovement : MonoBehaviour
         }
 
         Vector2 input = moveAction.ReadValue<Vector2>();
-        Vector3 move = transform.right * input.x + transform.forward * input.y;
-        controller.Move(move * speed * Time.deltaTime);
+        Vector3 moveDirection = CalculateMoveDirection(input);
+        controller.Move(moveDirection * speed * Time.deltaTime);
+        UpdateFacing(moveDirection);
 
         groundCheckOrigin = transform.position + controller.center;
         groundCheckRadius = controller.radius;
@@ -130,6 +132,43 @@ public class PlayerMovement : MonoBehaviour
         controller.Move(velocity * Time.deltaTime);
 
         HandleCameraControls();
+    }
+
+    private Vector3 CalculateMoveDirection(Vector2 input)
+    {
+        Vector3 forward = transform.forward;
+        Vector3 right = transform.right;
+
+        if (playerCamera != null)
+        {
+            forward = playerCamera.transform.forward;
+            right = playerCamera.transform.right;
+        }
+
+        forward.y = 0f;
+        right.y = 0f;
+        forward.Normalize();
+        right.Normalize();
+
+        Vector3 direction = right * input.x + forward * input.y;
+        if (direction.sqrMagnitude > 1f)
+        {
+            direction.Normalize();
+        }
+
+        return direction;
+    }
+
+    private void UpdateFacing(Vector3 moveDirection)
+    {
+        if (moveDirection.sqrMagnitude < 0.0001f)
+        {
+            return;
+        }
+
+        Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
+        float t = Mathf.Clamp01(turnSpeed * Time.deltaTime);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, t);
     }
 
     private void HandleCameraControls()
