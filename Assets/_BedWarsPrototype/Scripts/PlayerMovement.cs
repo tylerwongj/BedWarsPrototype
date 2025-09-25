@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 public class PlayerMovement : MonoBehaviour
 {
     [SerializeField] private float speed = 5f;
+    [SerializeField] private float sprintMultiplier = 2.0f;
     [SerializeField] private float jumpHeight = 1.5f;
     [SerializeField] private float gravity = -20f;
     [SerializeField] private float groundCheckDistance = 0.05f;
@@ -30,6 +31,9 @@ public class PlayerMovement : MonoBehaviour
     private PlayerInput playerInput;
     private InputAction moveAction;
     private InputAction jumpAction;
+    private InputAction sprintAction;
+    private InputAction rotateCameraAction;
+    private InputAction zoomCameraAction;
     private Vector3 velocity;
     private Camera playerCamera;
     private Vector3 cameraOffset;
@@ -58,6 +62,9 @@ public class PlayerMovement : MonoBehaviour
     {
         moveAction?.Disable();
         jumpAction?.Disable();
+        sprintAction?.Disable();
+        rotateCameraAction?.Disable();
+        zoomCameraAction?.Disable();
         playerInput.actions.Disable();
     }
 
@@ -73,8 +80,14 @@ public class PlayerMovement : MonoBehaviour
     {
         moveAction = playerInput.currentActionMap.FindAction("Move");
         jumpAction = playerInput.currentActionMap.FindAction("Jump");
+        sprintAction = playerInput.currentActionMap.FindAction("Sprint");
+        rotateCameraAction = playerInput.currentActionMap.FindAction("RotateCamera");
+        zoomCameraAction = playerInput.currentActionMap.FindAction("ZoomCamera");
         moveAction.Enable();
         jumpAction.Enable();
+        sprintAction?.Enable();
+        rotateCameraAction?.Enable();
+        zoomCameraAction?.Enable();
     }
 
     private void Update()
@@ -86,7 +99,8 @@ public class PlayerMovement : MonoBehaviour
 
         Vector2 input = moveAction.ReadValue<Vector2>();
         Vector3 moveDirection = CalculateMoveDirection(input);
-        controller.Move(moveDirection * speed * Time.deltaTime);
+        float currentSpeed = GetCurrentSpeed();
+        controller.Move(moveDirection * currentSpeed * Time.deltaTime);
         UpdateFacing(moveDirection);
 
         groundCheckOrigin = transform.position + controller.center;
@@ -134,6 +148,17 @@ public class PlayerMovement : MonoBehaviour
         HandleCameraControls();
     }
 
+    private float GetCurrentSpeed()
+    {
+        float modifiedSpeed = speed;
+        if (sprintAction != null && sprintAction.IsPressed())
+        {
+            modifiedSpeed *= sprintMultiplier;
+        }
+
+        return modifiedSpeed;
+    }
+
     private Vector3 CalculateMoveDirection(Vector2 input)
     {
         Vector3 forward = transform.forward;
@@ -178,27 +203,12 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard == null)
-        {
-            return;
-        }
-
         if (cameraOffset.sqrMagnitude < 0.0001f)
         {
             cameraOffset = new Vector3(0f, 0f, -Mathf.Max(minCameraDistance, 0.1f));
         }
 
-        float rotationInput = 0f;
-        if (keyboard.jKey.isPressed)
-        {
-            rotationInput -= 1f;
-        }
-
-        if (keyboard.lKey.isPressed)
-        {
-            rotationInput += 1f;
-        }
+        float rotationInput = rotateCameraAction != null ? rotateCameraAction.ReadValue<float>() : 0f;
 
         if (!Mathf.Approximately(rotationInput, 0f))
         {
@@ -206,16 +216,7 @@ public class PlayerMovement : MonoBehaviour
             cameraOffset = rotation * cameraOffset;
         }
 
-        float zoomInput = 0f;
-        if (keyboard.iKey.isPressed)
-        {
-            zoomInput -= 1f;
-        }
-
-        if (keyboard.kKey.isPressed)
-        {
-            zoomInput += 1f;
-        }
+        float zoomInput = zoomCameraAction != null ? zoomCameraAction.ReadValue<float>() : 0f;
 
         if (!Mathf.Approximately(zoomInput, 0f))
         {

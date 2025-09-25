@@ -1222,6 +1222,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 5
+  sprintMultiplier: 2
   jumpHeight: 1.5
   gravity: -20
   groundCheckDistance: 0.05
@@ -1235,6 +1236,7 @@ MonoBehaviour:
   cameraZoomSpeed: 5
   minCameraDistance: 2
   maxCameraDistance: 12
+  turnSpeed: 15
   showGroundCheckGizmo: 1
 --- !u!1 &1875679754
 GameObject:
